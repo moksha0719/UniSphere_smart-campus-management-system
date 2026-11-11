@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import courseRoutes from './routes/course.routes';
+import timetableRoutes from './routes/timetable.routes';
 
 dotenv.config();
 
@@ -31,6 +32,9 @@ app.use('/api/v1/auth', authRoutes);
 
 // Course & Enrollment Routes
 app.use('/api/v1/courses', courseRoutes);
+
+// Timetable & Scheduling Routes
+app.use('/api/v1/timetable', timetableRoutes);
 
 // 404 Route Handler
 app.use((_req: Request, res: Response) => {

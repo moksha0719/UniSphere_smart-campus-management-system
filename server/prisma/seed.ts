@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, CourseLecturerRole, EnrollmentStatus } from '@prisma/client';
+import { PrismaClient, UserRole, CourseLecturerRole, EnrollmentStatus, RoomType, DayOfWeek } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -46,12 +46,50 @@ async function main() {
   });
   console.log(`✅ Created Academic Term: ${term.name}`);
 
-  // 4. Create Standard Hashed Passwords
+  // 4. Create Standard Campus Rooms
+  const roomLH201 = await prisma.room.create({
+    data: {
+      roomNumber: 'LH-201',
+      building: 'Computing Complex',
+      floor: 2,
+      type: RoomType.LECTURE_HALL,
+      capacity: 120,
+      hasProjector: true,
+      isActive: true,
+    },
+  });
+
+  const roomLAB03 = await prisma.room.create({
+    data: {
+      roomNumber: 'LAB-03',
+      building: 'Turing Center',
+      floor: 3,
+      type: RoomType.COMPUTER_LAB,
+      capacity: 45,
+      hasProjector: true,
+      isActive: true,
+    },
+  });
+
+  const roomLH105 = await prisma.room.create({
+    data: {
+      roomNumber: 'LH-105',
+      building: 'Computing Complex',
+      floor: 1,
+      type: RoomType.STUDY_ROOM,
+      capacity: 60,
+      hasProjector: true,
+      isActive: true,
+    },
+  });
+  console.log(`✅ Created Rooms: LH-201 (Lecture Hall), LAB-03 (Computer Lab), LH-105 (Study Room)`);
+
+  // 5. Create Standard Hashed Passwords
   const adminPasswordHash = await bcrypt.hash('Admin@123', 10);
   const lecturerPasswordHash = await bcrypt.hash('Lecturer@123', 10);
   const studentPasswordHash = await bcrypt.hash('Student@123', 10);
 
-  // 5. Seed Administrator User
+  // 6. Seed Administrator User
   const admin = await prisma.user.create({
     data: {
       email: 'admin@campus.edu',
@@ -63,7 +101,7 @@ async function main() {
   });
   console.log(`✅ Created Admin: ${admin.email}`);
 
-  // 6. Seed Lecturer User + Profile
+  // 7. Seed Lecturer User + Profile
   const lecturer = await prisma.user.create({
     data: {
       email: 'lecturer@campus.edu',
@@ -86,7 +124,7 @@ async function main() {
   });
   console.log(`✅ Created Lecturer: ${lecturer.email} (Staff ID: ${lecturer.lecturerProfile?.employeeIdNumber})`);
 
-  // 7. Seed Student User + Profile
+  // 8. Seed Student User + Profile
   const student = await prisma.user.create({
     data: {
       email: 'student@campus.edu',
@@ -109,35 +147,39 @@ async function main() {
   });
   console.log(`✅ Created Student: ${student.email} (Student ID: ${student.studentProfile?.studentIdNumber})`);
 
-  // 8. Seed Academic Courses
+  // 9. Seed Academic Courses with Timetable Slots
   const coursesData = [
     {
       code: 'CS1010',
       title: 'Introduction to Computer Science & Python',
       credits: 4,
       description: 'Foundational programming concepts, algorithmic thinking, data structures, and object-oriented principles using Python.',
+      slot: { day: DayOfWeek.MON, start: '09:00', end: '11:00', roomId: roomLH201.id, roomCode: 'LH-201' },
     },
     {
       code: 'CS2020',
       title: 'Data Structures and Algorithm Analysis',
       credits: 4,
       description: 'Design and analysis of essential data structures: linked lists, trees, graphs, sorting algorithms, and asymptotic complexity.',
+      slot: { day: DayOfWeek.TUE, start: '11:00', end: '13:00', roomId: roomLAB03.id, roomCode: 'LAB-03' },
     },
     {
       code: 'CS3030',
       title: 'Database Management Systems',
       credits: 3,
       description: 'Relational database modeling, normalization, SQL queries, transaction management (ACID), and database optimization.',
+      slot: { day: DayOfWeek.WED, start: '14:00', end: '16:00', roomId: roomLH105.id, roomCode: 'LH-105' },
     },
     {
       code: 'CS4040',
       title: 'Full-Stack Web Development & Cloud Systems',
       credits: 3,
       description: 'Modern component-based client architectures (React, Tailwind), REST APIs with Node.js/Express, Docker, and cloud deployments.',
+      slot: { day: DayOfWeek.THU, start: '10:00', end: '12:00', roomId: roomLAB03.id, roomCode: 'LAB-03' },
     },
   ];
 
-  console.log('\n📚 Creating Academic Courses & Offerings...');
+  console.log('\n📚 Creating Academic Courses & Timetable Slots...');
   for (const c of coursesData) {
     const course = await prisma.course.create({
       data: {
@@ -157,6 +199,14 @@ async function main() {
                 roleInCourse: CourseLecturerRole.COORDINATOR,
               },
             },
+            timetableSlots: {
+              create: {
+                roomId: c.slot.roomId,
+                dayOfWeek: c.slot.day,
+                startTime: c.slot.start,
+                endTime: c.slot.end,
+              },
+            },
           },
         },
       },
@@ -165,9 +215,9 @@ async function main() {
       },
     });
 
-    console.log(`   - Course: ${course.code}: ${course.title} (Offering ID: ${course.offerings[0].id})`);
+    console.log(`   - Course: ${course.code} | Slot: ${c.slot.day} ${c.slot.start}-${c.slot.end} (${c.slot.roomCode})`);
 
-    // Enroll Alex Rivera in CS1010 by default as an active enrollment example
+    // Enroll Alex Rivera in CS1010 by default
     if (c.code === 'CS1010') {
       await prisma.courseEnrollment.create({
         data: {
@@ -176,7 +226,7 @@ async function main() {
           status: EnrollmentStatus.ENROLLED,
         },
       });
-      console.log(`     👉 Enrolled ${student.firstName} ${student.lastName} in ${course.code}`);
+      console.log(`     👉 Enrolled ${student.firstName} in ${course.code}`);
     }
   }
 
