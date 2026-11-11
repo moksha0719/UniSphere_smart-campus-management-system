@@ -2,6 +2,7 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
+import courseRoutes from './routes/course.routes';
 
 dotenv.config();
 
@@ -27,6 +28,9 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
 
 // Authentication Routes
 app.use('/api/v1/auth', authRoutes);
+
+// Course & Enrollment Routes
+app.use('/api/v1/courses', courseRoutes);
 
 // 404 Route Handler
 app.use((_req: Request, res: Response) => {
