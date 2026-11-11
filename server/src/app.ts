@@ -1,6 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth.routes';
 
 dotenv.config();
 
@@ -23,6 +24,9 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
     uptime: process.uptime(),
   });
 });
+
+// Authentication Routes
+app.use('/api/v1/auth', authRoutes);
 
 // 404 Route Handler
 app.use((_req: Request, res: Response) => {
