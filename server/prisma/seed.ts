@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, CourseLecturerRole, EnrollmentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding for Smart Campus Management System...');
 
-  // 1. Clean up existing records in reverse dependency order (optional/safe for re-seeding)
+  // 1. Clean up existing records in reverse dependency order
   await prisma.attendanceRecord.deleteMany();
   await prisma.attendanceSession.deleteMany();
   await prisma.submission.deleteMany();
@@ -61,7 +61,7 @@ async function main() {
       role: UserRole.ADMIN,
     },
   });
-  console.log(`✅ Created Admin: ${admin.email} (Role: ${admin.role})`);
+  console.log(`✅ Created Admin: ${admin.email}`);
 
   // 6. Seed Lecturer User + Profile
   const lecturer = await prisma.user.create({
@@ -108,6 +108,77 @@ async function main() {
     },
   });
   console.log(`✅ Created Student: ${student.email} (Student ID: ${student.studentProfile?.studentIdNumber})`);
+
+  // 8. Seed Academic Courses
+  const coursesData = [
+    {
+      code: 'CS1010',
+      title: 'Introduction to Computer Science & Python',
+      credits: 4,
+      description: 'Foundational programming concepts, algorithmic thinking, data structures, and object-oriented principles using Python.',
+    },
+    {
+      code: 'CS2020',
+      title: 'Data Structures and Algorithm Analysis',
+      credits: 4,
+      description: 'Design and analysis of essential data structures: linked lists, trees, graphs, sorting algorithms, and asymptotic complexity.',
+    },
+    {
+      code: 'CS3030',
+      title: 'Database Management Systems',
+      credits: 3,
+      description: 'Relational database modeling, normalization, SQL queries, transaction management (ACID), and database optimization.',
+    },
+    {
+      code: 'CS4040',
+      title: 'Full-Stack Web Development & Cloud Systems',
+      credits: 3,
+      description: 'Modern component-based client architectures (React, Tailwind), REST APIs with Node.js/Express, Docker, and cloud deployments.',
+    },
+  ];
+
+  console.log('\n📚 Creating Academic Courses & Offerings...');
+  for (const c of coursesData) {
+    const course = await prisma.course.create({
+      data: {
+        code: c.code,
+        title: c.title,
+        credits: c.credits,
+        description: c.description,
+        departmentId: department.id,
+        offerings: {
+          create: {
+            academicTermId: term.id,
+            sectionNumber: '01',
+            maxCapacity: 60,
+            lecturers: {
+              create: {
+                lecturerProfileId: lecturer.lecturerProfile!.id,
+                roleInCourse: CourseLecturerRole.COORDINATOR,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        offerings: true,
+      },
+    });
+
+    console.log(`   - Course: ${course.code}: ${course.title} (Offering ID: ${course.offerings[0].id})`);
+
+    // Enroll Alex Rivera in CS1010 by default as an active enrollment example
+    if (c.code === 'CS1010') {
+      await prisma.courseEnrollment.create({
+        data: {
+          courseOfferingId: course.offerings[0].id,
+          studentProfileId: student.studentProfile!.id,
+          status: EnrollmentStatus.ENROLLED,
+        },
+      });
+      console.log(`     👉 Enrolled ${student.firstName} ${student.lastName} in ${course.code}`);
+    }
+  }
 
   console.log('\n✨ Database seeding completed successfully!');
   console.log('----------------------------------------------------');
