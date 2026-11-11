@@ -2,28 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { CourseOffering, EnrolledCourse } from '../../types/course';
+import { TimetableSlot } from '../../types/timetable';
+import { WeeklyScheduleGrid } from '../../components/timetable/WeeklyScheduleGrid';
 import { 
   GraduationCap, LogOut, BookOpen, Search, CheckCircle, 
-  ShieldCheck, AlertCircle, PlusCircle, Trash2, Users, Award, BookMarked
+  ShieldCheck, AlertCircle, PlusCircle, Trash2, Users, Award, BookMarked, Calendar
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'my-courses' | 'catalog'>('my-courses');
+  const [activeTab, setActiveTab] = useState<'my-courses' | 'catalog' | 'timetable'>('my-courses');
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
   const [offerings, setOfferings] = useState<CourseOffering[]>([]);
+  const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [timetableLoading, setTimetableLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [bannerMessage, setBannerMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [enrollRes, offeringsRes] = await Promise.all([
+      const [enrollRes, offeringsRes, timetableRes] = await Promise.all([
         api.get<{ success: boolean; data: EnrolledCourse[] }>('/courses/my-enrollments'),
         api.get<{ success: boolean; data: CourseOffering[] }>('/courses/offerings'),
+        api.get<{ success: boolean; data: TimetableSlot[] }>('/timetable/my-schedule'),
       ]);
 
       if (enrollRes.data.success) {
@@ -32,8 +37,11 @@ export const StudentDashboard: React.FC = () => {
       if (offeringsRes.data.success) {
         setOfferings(offeringsRes.data.data);
       }
+      if (timetableRes.data.success) {
+        setTimetableSlots(timetableRes.data.data);
+      }
     } catch (err: any) {
-      console.error('Failed to load courses:', err);
+      console.error('Failed to load student data:', err);
     } finally {
       setLoading(false);
     }
@@ -147,7 +155,7 @@ export const StudentDashboard: React.FC = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-blue-200" />
-              <span>Milestone 2 • Academic Catalog & Enrollment</span>
+              <span>Milestone 3 • Interactive Timetable & Conflict Engine</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Welcome, {user?.firstName}!
@@ -164,6 +172,10 @@ export const StudentDashboard: React.FC = () => {
               <p className="text-2xl font-bold text-white mt-0.5">{enrolledCourses.length}</p>
             </div>
             <div className="flex-1 md:flex-initial bg-white/10 backdrop-blur-md px-5 py-3.5 rounded-2xl border border-white/10 text-center">
+              <p className="text-xs text-blue-100 uppercase tracking-wider font-medium">Weekly Classes</p>
+              <p className="text-2xl font-bold text-white mt-0.5">{timetableSlots.length}</p>
+            </div>
+            <div className="flex-1 md:flex-initial bg-white/10 backdrop-blur-md px-5 py-3.5 rounded-2xl border border-white/10 text-center">
               <p className="text-xs text-blue-100 uppercase tracking-wider font-medium">Total Credits</p>
               <p className="text-2xl font-bold text-white mt-0.5">{totalCredits}</p>
             </div>
@@ -171,29 +183,41 @@ export const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
           <button
             onClick={() => setActiveTab('my-courses')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition ${
               activeTab === 'my-courses'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             <BookMarked className="w-4 h-4" />
-            <span>My Enrolled Courses ({enrolledCourses.length})</span>
+            <span>My Courses ({enrolledCourses.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('timetable')}
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition ${
+              activeTab === 'timetable'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>My Weekly Timetable ({timetableSlots.length} Classes)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('catalog')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition ${
               activeTab === 'catalog'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Browse Course Catalog</span>
+            <span>Browse Catalog</span>
           </button>
         </div>
 
@@ -261,7 +285,14 @@ export const StudentDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 2: Course Catalog & Enrollment */}
+        {/* Tab 2: My Weekly Timetable (Milestone 3 Feature!) */}
+        {activeTab === 'timetable' && (
+          <div className="space-y-4">
+            <WeeklyScheduleGrid slots={timetableSlots} loading={timetableLoading} />
+          </div>
+        )}
+
+        {/* Tab 3: Course Catalog & Enrollment */}
         {activeTab === 'catalog' && (
           <div className="space-y-4">
             {/* Search Input */}
